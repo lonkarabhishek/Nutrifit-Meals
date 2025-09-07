@@ -1,5 +1,5 @@
 
--- Create a view to calculate today''s production plan
+-- Create a view to calculate today's production plan
 CREATE OR REPLACE VIEW v_today_production AS
 SELECT
     mi.recipe_id,
@@ -15,8 +15,8 @@ JOIN
     recipes r ON mi.recipe_id = r.id
 WHERE
     d.date = CURRENT_DATE
-    AND d.status = ''scheduled'' -- Only count scheduled, not paused or holiday
-    AND s.status = ''active''
+    AND d.status = 'scheduled' -- Only count scheduled, not paused or holiday
+    AND s.status = 'active'
 GROUP BY
     mi.recipe_id, r.name;
 
@@ -39,7 +39,7 @@ JOIN
 JOIN
     recipes r ON mi.recipe_id = r.id
 WHERE
-    d.status = ''delivered''
+    d.status = 'delivered'
 GROUP BY
     d.subscription_id, s.user_id, d.date;
 
@@ -52,9 +52,9 @@ BEGIN
         FROM pauses
         WHERE subscription_id = NEW.subscription_id
         AND id != COALESCE(NEW.id, 0)
-        AND daterange(start_date, end_date, ''[]'') && daterange(NEW.start_date, NEW.end_date, ''[]'')
+        AND daterange(start_date, end_date, '[]') && daterange(NEW.start_date, NEW.end_date, '[]')
     ) THEN
-        RAISE EXCEPTION ''Pause request overlaps with an existing pause.'' ;
+        RAISE EXCEPTION 'Pause request overlaps with an existing pause.' ;
     END IF;
     RETURN NEW;
 END;
@@ -76,8 +76,8 @@ DECLARE
     recipe_fats INT;
     meals_per_day_val INT;
 BEGIN
-    -- Only run trigger if status is changed to ''delivered''
-    IF NEW.status = ''delivered'' AND OLD.status != ''delivered'' THEN
+    -- Only run trigger if status is changed to 'delivered'
+    IF NEW.status = 'delivered' AND OLD.status != 'delivered' THEN
         -- Get user_id and meals_per_day from subscription
         SELECT user_id, meals_per_day INTO user_id_val, meals_per_day_val
         FROM subscriptions
@@ -99,7 +99,7 @@ BEGIN
             recipe_protein * meals_per_day_val,
             recipe_carbs * meals_per_day_val,
             recipe_fats * meals_per_day_val,
-            ''delivery''
+            'delivery'
         )
         ON CONFLICT (user_id, date) DO UPDATE SET
             kcal = excluded.kcal,
