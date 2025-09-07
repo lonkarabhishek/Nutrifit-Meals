@@ -1,14 +1,14 @@
 
 -- Create custom enum types
-CREATE TYPE user_role AS ENUM (''client'', ''chef'', ''admin'', ''driver'');
-CREATE TYPE delivery_status AS ENUM (''scheduled'', ''out_for_delivery'', ''arriving'', ''delivered'', ''skipped_paused'', ''holiday_sunday'', ''failed'');
-CREATE TYPE meal_slot AS ENUM (''lunch'', ''dinner'');
+CREATE TYPE user_role AS ENUM ('client', 'chef', 'admin', 'driver');
+CREATE TYPE delivery_status AS ENUM ('scheduled', 'out_for_delivery', 'arriving', 'delivered', 'skipped_paused', 'holiday_sunday', 'failed');
+CREATE TYPE meal_slot AS ENUM ('lunch', 'dinner');
 
 -- Create profiles table to store user data
 CREATE TABLE profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT,
-    role user_role NOT NULL DEFAULT ''client'',
+    role user_role NOT NULL DEFAULT 'client',
     phone TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -32,8 +32,8 @@ CREATE INDEX idx_addresses_user_id ON addresses(user_id);
 CREATE TABLE subscriptions (
     id BIGSERIAL PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    status TEXT NOT NULL DEFAULT ''active'' CHECK (status IN (''active'', ''paused'', ''canceled'')),
-    plan_name TEXT NOT NULL DEFAULT ''Monthly'',
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'canceled')),
+    plan_name TEXT NOT NULL DEFAULT 'Monthly',
     price_in_inr INT NOT NULL DEFAULT 4000,
     meals_per_day INT NOT NULL DEFAULT 1,
     start_date DATE NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE menu_templates (
     id BIGSERIAL PRIMARY KEY,
     week_no INT NOT NULL CHECK (week_no IN (1, 2)),
     dow INT NOT NULL CHECK (dow BETWEEN 1 AND 6), -- Monday=1, Saturday=6
-    meal_slot meal_slot NOT NULL DEFAULT ''lunch'',
+    meal_slot meal_slot NOT NULL DEFAULT 'lunch',
     recipe_id BIGINT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
     UNIQUE (week_no, dow, meal_slot)
 );
@@ -104,7 +104,7 @@ CREATE TABLE menu_instances (
     id BIGSERIAL PRIMARY KEY,
     date DATE NOT NULL UNIQUE,
     week_no INT NOT NULL,
-    meal_slot meal_slot NOT NULL DEFAULT ''lunch'',
+    meal_slot meal_slot NOT NULL DEFAULT 'lunch',
     recipe_id BIGINT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE
 );
 
@@ -113,8 +113,8 @@ CREATE TABLE deliveries (
     id BIGSERIAL PRIMARY KEY,
     subscription_id BIGINT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
     date DATE NOT NULL,
-    meal_slot meal_slot NOT NULL DEFAULT ''lunch'',
-    status delivery_status NOT NULL DEFAULT ''scheduled'',
+    meal_slot meal_slot NOT NULL DEFAULT 'lunch',
+    status delivery_status NOT NULL DEFAULT 'scheduled',
     driver_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     delivered_at TIMESTAMPTZ,
     notes TEXT
@@ -152,7 +152,7 @@ CREATE TABLE macro_facts (
     protein_g INT NOT NULL DEFAULT 0,
     carbs_g INT NOT NULL DEFAULT 0,
     fats_g INT NOT NULL DEFAULT 0,
-    source TEXT NOT NULL DEFAULT ''system'',
+    source TEXT NOT NULL DEFAULT 'system',
     UNIQUE(user_id, date)
 );
 CREATE INDEX idx_macro_facts_user_date ON macro_facts(user_id, date);
@@ -178,25 +178,25 @@ ALTER TABLE recipe_ingredients ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow users to view and manage their own profile" ON profiles
     FOR ALL USING (auth.uid() = id);
 CREATE POLICY "Allow admins to view all profiles" ON profiles
-    FOR SELECT USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = ''admin''));
+    FOR SELECT USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Addresses: Users can manage their own addresses. Admins can see all.
 CREATE POLICY "Allow users to manage their own addresses" ON addresses
     FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Allow admins to view all addresses" ON addresses
-    FOR SELECT USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = ''admin''));
+    FOR SELECT USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Subscriptions: Clients see their own. Admins see all.
 CREATE POLICY "Allow clients to view their own subscriptions" ON subscriptions
     FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Allow admins to manage all subscriptions" ON subscriptions
-    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = ''admin''));
+    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Pauses: Clients see their own. Admins see all.
 CREATE POLICY "Allow clients to manage their own pauses" ON pauses
     FOR ALL USING (EXISTS (SELECT 1 FROM subscriptions WHERE id = subscription_id AND user_id = auth.uid()));
 CREATE POLICY "Allow admins to manage all pauses" ON pauses
-    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = ''admin''));
+    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Deliveries: Clients see their own. Drivers see their assigned ones. Admins see all.
 CREATE POLICY "Allow clients to view their own deliveries" ON deliveries
@@ -206,36 +206,36 @@ CREATE POLICY "Allow drivers to see their assigned deliveries" ON deliveries
 CREATE POLICY "Allow drivers to update status of their deliveries" ON deliveries
     FOR UPDATE USING (auth.uid() = driver_id) WITH CHECK (auth.uid() = driver_id);
 CREATE POLICY "Allow admins to manage all deliveries" ON deliveries
-    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = ''admin''));
+    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Macro Facts: Clients see their own. Admins see all.
 CREATE POLICY "Allow clients to view their own macro facts" ON macro_facts
     FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Allow admins to manage all macro facts" ON macro_facts
-    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = ''admin''));
+    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Driver Locations: Drivers can update their own location. Admins/Clients can see relevant locations.
 CREATE POLICY "Allow drivers to manage their own location" ON driver_locations
     FOR ALL USING (auth.uid() = driver_id);
 CREATE POLICY "Allow admins to view all driver locations" ON driver_locations
-    FOR SELECT USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = ''admin''));
--- Note: A specific policy or view will be needed for clients to see their assigned driver''s location.
+    FOR SELECT USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+-- Note: A specific policy or view will be needed for clients to see their assigned driver's location.
 
 -- Routes: Drivers can see their own route. Admins can manage all routes.
 CREATE POLICY "Allow drivers to see their own routes" ON routes
     FOR SELECT USING (auth.uid() = driver_id);
 CREATE POLICY "Allow admins to manage all routes" ON routes
-    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = ''admin''));
+    FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Read-only access for authenticated users to recipe/menu data
-CREATE POLICY "Allow authenticated users to view recipes and menus" ON recipes FOR SELECT USING (auth.role() = ''authenticated'');
-CREATE POLICY "Allow authenticated users to view menu templates" ON menu_templates FOR SELECT USING (auth.role() = ''authenticated'');
-CREATE POLICY "Allow authenticated users to view menu instances" ON menu_instances FOR SELECT USING (auth.role() = ''authenticated'');
-CREATE POLICY "Allow authenticated users to view ingredients" ON ingredients FOR SELECT USING (auth.role() = ''authenticated'');
-CREATE POLICY "Allow authenticated users to view recipe ingredients" ON recipe_ingredients FOR SELECT USING (auth.role() = ''authenticated'');
+CREATE POLICY "Allow authenticated users to view recipes and menus" ON recipes FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated users to view menu templates" ON menu_templates FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated users to view menu instances" ON menu_instances FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated users to view ingredients" ON ingredients FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated users to view recipe ingredients" ON recipe_ingredients FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Admin/Chef write access to menu data
-CREATE POLICY "Allow admin/chef to manage recipes" ON recipes FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN (''admin'', ''chef'')));
-CREATE POLICY "Allow admin/chef to manage menu templates" ON menu_templates FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN (''admin'', ''chef'')));
-CREATE POLICY "Allow admin/chef to manage ingredients" ON ingredients FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN (''admin'', ''chef'')));
-CREATE POLICY "Allow admin/chef to manage recipe ingredients" ON recipe_ingredients FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN (''admin'', ''chef'')));
+CREATE POLICY "Allow admin/chef to manage recipes" ON recipes FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'chef')));
+CREATE POLICY "Allow admin/chef to manage menu templates" ON menu_templates FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'chef')));
+CREATE POLICY "Allow admin/chef to manage ingredients" ON ingredients FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'chef')));
+CREATE POLICY "Allow admin/chef to manage recipe ingredients" ON recipe_ingredients FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'chef')));
