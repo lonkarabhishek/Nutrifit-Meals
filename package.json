@@ -1,0 +1,13 @@
+{
+  "name": "nutrifit-meals",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd apps/web && npm install && npm run build",
+    "start": "cd apps/web && npm start",
+    "dev": "cd apps/web && npm run dev",
+    "install": "cd apps/web && npm install"
+  },
+  "workspaces": [
+    "apps/web"
+  ]
+}
